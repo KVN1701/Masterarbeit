@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 # ! Daten sind 180 Sekunden lang
 
-mtf = MarkovTransitionField()
+mtf = MarkovTransitionField(n_bins=8, strategy='uniform')
 
 
 def plot_markov(data_arr):
@@ -54,7 +54,8 @@ def generate_dataset_timespans(length: int=30, delay: int=5):
 if __name__ == '__main__':
     total_data = generate_dataset_timespans(length=15, delay=5)
     
-    for i, arr in tqdm(enumerate(total_data)):
+    for i in tqdm(range(len(total_data))):
+        arr = total_data[i]
         plot = plot_markov(arr)
         os.makedirs('datasets/ubfc', exist_ok=True)
         plot.savefig(f'datasets/ubfc/plot_{i}.png')
