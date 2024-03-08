@@ -1,8 +1,11 @@
 import pytorch_lightning as pl
 import torch
-import torchvision
 from torch import nn
+from torch.utils.data import Subset
+import torchvision
+from sklearn.model_selection import train_test_split
 
+from lightly.data import LightlyDataset
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from lightly.transforms.simclr_transform import SimCLRTransform
@@ -26,6 +29,15 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
+        self.log('val_loss', loss)
+        return loss
+    
+    def test_step(self, batch, batch_index):
+        x0, x1 = batch[0]
+        z0 = self.forward(x0)
+        z1 = self.forward(x1)
+        loss = self.criterion(z0, z1)
+        self.log('test_loss', loss)
         return loss
 
     def configure_optimizers(self):
@@ -33,26 +45,39 @@ class SimCLR(pl.LightningModule):
         return optim
 
 
+def split_dataset(dataset, val_split=0.2):
+    train_idx, val_indx = train_test_split(list(range(len(dataset))), test_size=val_split)
+    datasets = {}
+    datasets['train'] = Subset(dataset, train_idx)
+    datasets['val'] = Subset(dataset, val_indx)
+    return datasets
+
+
 torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
 
 model = SimCLR()
 
 transform = SimCLRTransform(input_size=32)
-dataset = torchvision.datasets.CIFAR10(
-    "datasets/cifar10", download=False, transform=transform # download=False um den print Files already downloaded and verified zu vermeiden
-)
-# or create a dataset from a folder containing images or videos:
-# dataset = LightlyDataset("path/to/folder", transform=transform)
 
-dataloader = torch.utils.data.DataLoader(
-    dataset,
-    batch_size=256,
+dataset = LightlyDataset('datasets/ubfc', transform=transform)
+datasets = split_dataset(dataset)
+
+
+dataloader_train = torch.utils.data.DataLoader(
+    datasets['train'],
+    batch_size=64,
     shuffle=True,
     drop_last=True,
     num_workers=8,
     persistent_workers=True # beschleunigt den Trainingsprozess, bei erster epoche langes laden danach keine Wartezeit
 )
 
+dataloader_validate = torch.utils.data.DataLoader(
+    datasets['val'],
+    num_workers = 23
+)
+
 if __name__ == '__main__':
-    trainer = pl.Trainer(max_epochs=10, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader)
+    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
+    trainer.fit(model=model, train_dataloaders=dataloader_train)
+    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='best')
