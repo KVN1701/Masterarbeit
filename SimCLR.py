@@ -31,7 +31,7 @@ class SimCLR(pl.LightningModule):
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
         accuracy = Accuracy()
-        acc = accuracy(z1, x1)
+        acc = accuracy(z1, x1, task='multiclass')
         self.log('val_loss', loss)
         self.log('accuracy', acc, on_epoch=True)
         return loss
@@ -41,7 +41,7 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        acccuracy = Accuracy()
+        acccuracy = Accuracy(task='multiclass')
         acc = acccuracy(z1, x1)
         self.log('val_loss', loss)
         self.log('accuracy', acc, on_epoch=True)
@@ -52,7 +52,7 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        acccuracy = Accuracy()
+        acccuracy = Accuracy(task='multiclass')
         acc = acccuracy(z1, x1)
         self.log('val_loss', loss)
         self.log('accuracy', acc, on_epoch=True)
@@ -71,7 +71,7 @@ def split_dataset(dataset, val_split=0.2):
     return datasets
 
 
-# torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
+torch.set_float32_matmul_precision('medium') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
 
 model = SimCLR()
 
