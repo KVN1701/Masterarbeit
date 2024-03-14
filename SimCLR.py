@@ -25,7 +25,7 @@ class SimCLR(pl.LightningModule):
         return z
 
     def training_step(self, batch, batch_index):
-        (x0, x1) = batch[0]
+        x0, x1 = batch[0]
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
@@ -74,7 +74,8 @@ dataloader_train = torch.utils.data.DataLoader(
 
 dataloader_validate = torch.utils.data.DataLoader(
     datasets['val'],
-    num_workers = 23
+    num_workers = 23,
+    persistent_workers=True
 )
 
 if __name__ == '__main__':

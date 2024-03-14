@@ -28,6 +28,7 @@ def generate_dataset_timespans(length: int=30, delay: int=5):
         for file_name in os.listdir(f'{file_path}/{subdir}/'):
             # handling bvp files
             if 'bvp' in file_name:
+                continue # ! Vorübergehend nur eda Daten zum Trainieren
                 hz = 64 # bvp-data is in 64 Hz
             
             # handling eda files
