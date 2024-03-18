@@ -29,7 +29,7 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        self.log('test_loss', loss)
+        self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         return loss
         
     def test_step(self, batch, batch_index):
@@ -41,7 +41,7 @@ class SimCLR(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optim = torch.optim.SGD(self.parameters(), lr=0.06)
+        optim = torch.optim.SGD(self.parameters(), lr=0.001)
         return optim
 
 
