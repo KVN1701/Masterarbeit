@@ -29,9 +29,9 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        self.log('val_loss', loss)
+        self.log('test_loss', loss)
         return loss
-    
+        
     def test_step(self, batch, batch_index):
         x0, x1 = batch[0]
         z0 = self.forward(x0)
@@ -57,7 +57,7 @@ torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor
 
 model = SimCLR()
 
-transform = SimCLRTransform(input_size=32)
+transform = SimCLRTransform(input_size=500)
 
 dataset = LightlyDataset('datasets/ubfc', transform=transform)
 datasets = split_dataset(dataset)
@@ -65,7 +65,7 @@ datasets = split_dataset(dataset)
 
 dataloader_train = torch.utils.data.DataLoader(
     datasets['train'],
-    batch_size=64,
+    batch_size=16,
     shuffle=True,
     drop_last=True,
     num_workers=8,
@@ -74,6 +74,7 @@ dataloader_train = torch.utils.data.DataLoader(
 
 dataloader_validate = torch.utils.data.DataLoader(
     datasets['val'],
+    batch_size=16,
     num_workers = 23,
     persistent_workers=True
 )
