@@ -21,6 +21,7 @@ class SimCLR(pl.LightningModule):
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
         self.projection_head = SimCLRProjectionHead(512, 1024, 1024) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
         self.criterion = NTXentLoss()
+        self.accuracy = Accuracy()
 
     def forward(self, x):
         x = self.backbone(x).flatten(start_dim=1)
@@ -32,10 +33,11 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        accuracy = Accuracy(task='multiclass', num_classes=2)
-        acc = accuracy(z1, x1)
+        # accuracy = Accuracy(task='multiclass', num_classes=2)
+        # acc = accuracy(z1, x1)
         self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
-        self.log('accuracy', acc, on_epoch=True)
+        self.log('train_acc_step', self.accuracy(z0, x1))
+        # self.log('accuracy', acc, on_epoch=True)
         return loss
     
     def validation_step(self, batch, batch_index):
@@ -43,10 +45,10 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        acccuracy = Accuracy(task='multiclass', num_classes=2)
-        acc = acccuracy(z1, x1)
-        self.log('val_loss', loss)
-        self.log('accuracy', acc, on_epoch=True)
+        # acccuracy = Accuracy(task='multiclass', num_classes=2)
+        # acc = acccuracy(z1, x1)
+        self.log('val_loss', loss, batch_size=batch_size)
+        # self.log('accuracy', acc, on_epoch=True)
         return loss
         
     def test_step(self, batch, batch_index):
@@ -54,11 +56,10 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        acccuracy = Accuracy(task='multiclass', num_classes=2)
-        acc = acccuracy(z1, x1)
+        # acccuracy = Accuracy(task='multiclass', num_classes=2)
+        # acc = acccuracy(z1, x1)
         self.log('test_loss', loss, batch_size=batch_size)
-        self.log('accuracy', acc, on_epoch=True)
-
+        # self.log('accuracy', acc, on_epoch=True)
         return loss
 
     def configure_optimizers(self):
@@ -102,6 +103,6 @@ dataloader_validate = torch.utils.data.DataLoader(
 )
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=50, devices=1, accelerator='gpu')
+    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
     trainer.fit(model=model, train_dataloaders=dataloader_train)
-    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
+    # trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
