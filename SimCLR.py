@@ -11,13 +11,15 @@ from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from lightly.transforms.simclr_transform import SimCLRTransform
 
+training_losses = []
+
 
 class SimCLR(pl.LightningModule):
     def __init__(self):
         super().__init__()
         resnet = torchvision.models.resnet18()
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
-        self.projection_head = SimCLRProjectionHead(512, 2048, 2048)
+        self.projection_head = SimCLRProjectionHead(512, 1024, 1024) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
         self.criterion = NTXentLoss()
 
     def forward(self, x):
@@ -32,7 +34,7 @@ class SimCLR(pl.LightningModule):
         loss = self.criterion(z0, z1)
         accuracy = Accuracy(task='multiclass', num_classes=2)
         acc = accuracy(z1, x1)
-        self.log('val_loss', loss)
+        self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
         self.log('accuracy', acc, on_epoch=True)
         return loss
     
@@ -46,7 +48,7 @@ class SimCLR(pl.LightningModule):
         self.log('val_loss', loss)
         self.log('accuracy', acc, on_epoch=True)
         return loss
-    
+        
     def test_step(self, batch, batch_index):
         x0, x1 = batch[0]
         z0 = self.forward(x0)
@@ -54,8 +56,9 @@ class SimCLR(pl.LightningModule):
         loss = self.criterion(z0, z1)
         acccuracy = Accuracy(task='multiclass', num_classes=2)
         acc = acccuracy(z1, x1)
-        self.log('val_loss', loss)
+        self.log('test_loss', loss, batch_size=batch_size)
         self.log('accuracy', acc, on_epoch=True)
+
         return loss
 
     def configure_optimizers(self):
@@ -75,15 +78,16 @@ torch.set_float32_matmul_precision('medium') # alternativ medium, da 4070ti tens
 
 model = SimCLR()
 
-transform = SimCLRTransform(input_size=32)
+transform = SimCLRTransform(input_size=256)
 
 dataset = LightlyDataset('datasets/ubfc', transform=transform)
 datasets = split_dataset(dataset)
+batch_size = 16
 
 
 dataloader_train = torch.utils.data.DataLoader(
     datasets['train'],
-    batch_size=16,
+    batch_size=batch_size,
     shuffle=True,
     drop_last=True,
     num_workers=8,
@@ -92,11 +96,12 @@ dataloader_train = torch.utils.data.DataLoader(
 
 dataloader_validate = torch.utils.data.DataLoader(
     datasets['val'],
+    batch_size=batch_size,
     num_workers = 23,
     persistent_workers=True
 )
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader_train, val_dataloaders=dataloader_validate)
+    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=50, devices=1, accelerator='gpu')
+    trainer.fit(model=model, train_dataloaders=dataloader_train)
     trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')

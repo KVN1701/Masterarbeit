@@ -12,7 +12,7 @@ mtf = MarkovTransitionField(n_bins=8, strategy='uniform')
 def plot_markov(data_arr):
     X_mtf = mtf.fit_transform(data_arr)
     
-    fig = plt.figure(figsize=(5, 5))
+    fig = plt.figure(figsize=(2.56, 2.56))
     
     ax_mtf = fig.add_subplot()
     ax_mtf.imshow(X_mtf[0], cmap='rainbow', origin='lower', vmin=0., vmax=1.)
@@ -28,7 +28,7 @@ def generate_dataset_timespans(length: int=30, delay: int=5):
         for file_name in os.listdir(f'{file_path}/{subdir}/'):
             # handling bvp files
             if 'bvp' in file_name:
-                continue # ! Vorübergehend nur EDA-Daten
+                continue # ! Vorübergehend nur eda Daten zum Trainieren
                 hz = 64 # bvp-data is in 64 Hz
             
             # handling eda files
