@@ -4,6 +4,7 @@ from torch import nn
 from torch.utils.data import Subset
 import torchvision
 from sklearn.model_selection import train_test_split
+from torchmetrics import Accuracy
 
 from lightly.data import LightlyDataset
 from lightly.loss import NTXentLoss
@@ -31,8 +32,21 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        training_losses.append(loss)
+        accuracy = Accuracy(task='multiclass', num_classes=2)
+        acc = accuracy(z1, x1)
         self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
+        self.log('accuracy', acc, on_epoch=True)
+        return loss
+    
+    def validation_step(self, batch, batch_index):
+        x0, x1 = batch[0]
+        z0 = self.forward(x0)
+        z1 = self.forward(x1)
+        loss = self.criterion(z0, z1)
+        acccuracy = Accuracy(task='multiclass', num_classes=2)
+        acc = acccuracy(z1, x1)
+        self.log('val_loss', loss)
+        self.log('accuracy', acc, on_epoch=True)
         return loss
         
     def test_step(self, batch, batch_index):
@@ -40,7 +54,11 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
+        acccuracy = Accuracy(task='multiclass', num_classes=2)
+        acc = acccuracy(z1, x1)
         self.log('test_loss', loss, batch_size=batch_size)
+        self.log('accuracy', acc, on_epoch=True)
+
         return loss
 
     def configure_optimizers(self):
@@ -56,7 +74,7 @@ def split_dataset(dataset, val_split=0.2):
     return datasets
 
 
-torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
+torch.set_float32_matmul_precision('medium') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
 
 model = SimCLR()
 
