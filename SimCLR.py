@@ -16,7 +16,7 @@ class SimCLR(pl.LightningModule):
         super().__init__()
         resnet = torchvision.models.resnet18()
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
-        self.projection_head = SimCLRProjectionHead(512, 2048, 2048)
+        self.projection_head = SimCLRProjectionHead(512, 1024, 1024) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
         self.criterion = NTXentLoss()
 
     def forward(self, x):
@@ -57,7 +57,7 @@ torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor
 
 model = SimCLR()
 
-transform = SimCLRTransform(input_size=500)
+transform = SimCLRTransform(input_size=256)
 
 dataset = LightlyDataset('datasets/ubfc', transform=transform)
 datasets = split_dataset(dataset)
@@ -80,6 +80,6 @@ dataloader_validate = torch.utils.data.DataLoader(
 )
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
+    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=50, devices=1, accelerator='gpu')
     trainer.fit(model=model, train_dataloaders=dataloader_train)
     trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='best')
