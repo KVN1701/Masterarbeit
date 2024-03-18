@@ -104,5 +104,5 @@ dataloader_validate = torch.utils.data.DataLoader(
 
 if __name__ == '__main__':
     trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader_train)
+    trainer.fit(model=model, train_dataloaders=dataloader_train, val_dataloaders=dataloader_validate)
     # trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
