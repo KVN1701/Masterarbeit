@@ -10,6 +10,8 @@ from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from lightly.transforms.simclr_transform import SimCLRTransform
 
+training_losses = []
+
 
 class SimCLR(pl.LightningModule):
     def __init__(self):
@@ -29,7 +31,8 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+        training_losses.append(loss)
+        self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
         return loss
         
     def test_step(self, batch, batch_index):
@@ -37,11 +40,11 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        self.log('test_loss', loss)
+        self.log('test_loss', loss, batch_size=batch_size)
         return loss
 
     def configure_optimizers(self):
-        optim = torch.optim.SGD(self.parameters(), lr=0.001)
+        optim = torch.optim.SGD(self.parameters(), lr=0.06)
         return optim
 
 
@@ -61,11 +64,12 @@ transform = SimCLRTransform(input_size=256)
 
 dataset = LightlyDataset('datasets/ubfc', transform=transform)
 datasets = split_dataset(dataset)
+batch_size = 16
 
 
 dataloader_train = torch.utils.data.DataLoader(
     datasets['train'],
-    batch_size=16,
+    batch_size=batch_size,
     shuffle=True,
     drop_last=True,
     num_workers=8,
@@ -74,7 +78,7 @@ dataloader_train = torch.utils.data.DataLoader(
 
 dataloader_validate = torch.utils.data.DataLoader(
     datasets['val'],
-    batch_size=16,
+    batch_size=batch_size,
     num_workers = 23,
     persistent_workers=True
 )
@@ -82,4 +86,4 @@ dataloader_validate = torch.utils.data.DataLoader(
 if __name__ == '__main__':
     trainer = pl.Trainer(log_every_n_steps=2, max_epochs=50, devices=1, accelerator='gpu')
     trainer.fit(model=model, train_dataloaders=dataloader_train)
-    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='best')
+    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
