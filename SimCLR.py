@@ -33,33 +33,33 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        # accuracy = Accuracy(task='multiclass', num_classes=2)
-        # acc = accuracy(z1, x1)
+        accuracy = Accuracy(task='multiclass', num_classes=2)
+        acc = accuracy(z1, x1)
         self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
         self.log('train_acc_step', self.accuracy(z0, x1))
-        # self.log('accuracy', acc, on_epoch=True)
+        self.log('accuracy', acc, on_epoch=True)
         return loss
     
-    def validation_step(self, batch, batch_index):
-        x0, x1 = batch[0]
-        z0 = self.forward(x0)
-        z1 = self.forward(x1)
-        loss = self.criterion(z0, z1)
-        # acccuracy = Accuracy(task='multiclass', num_classes=2)
-        # acc = acccuracy(z1, x1)
-        self.log('val_loss', loss, batch_size=batch_size)
-        # self.log('accuracy', acc, on_epoch=True)
-        return loss
+    # def validation_step(self, batch, batch_index):
+    #     x0, x1 = batch[0]
+    #     z0 = self.forward(x0)
+    #     z1 = self.forward(x1)
+    #     loss = self.criterion(z0, z1)
+    #     # acccuracy = Accuracy(task='multiclass', num_classes=2)
+    #     # acc = acccuracy(z1, x1)
+    #     self.log('val_loss', loss, batch_size=batch_size)
+    #     # self.log('accuracy', acc, on_epoch=True)
+    #     return loss
         
     def test_step(self, batch, batch_index):
         x0, x1 = batch[0]
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
-        # acccuracy = Accuracy(task='multiclass', num_classes=2)
-        # acc = acccuracy(z1, x1)
+        acccuracy = Accuracy(task='multiclass', num_classes=2)
+        acc = acccuracy(z1, x1)
         self.log('test_loss', loss, batch_size=batch_size)
-        # self.log('accuracy', acc, on_epoch=True)
+        self.log('accuracy', acc, on_epoch=True)
         return loss
 
     def configure_optimizers(self):
@@ -104,5 +104,5 @@ dataloader_validate = torch.utils.data.DataLoader(
 
 if __name__ == '__main__':
     trainer = pl.Trainer(log_every_n_steps=2, max_epochs=10, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader_train, val_dataloaders=dataloader_validate)
+    trainer.fit(model=model, train_dataloaders=dataloader_train)
     # trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
