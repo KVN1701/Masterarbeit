@@ -6,6 +6,7 @@ import torchvision
 from sklearn.model_selection import train_test_split
 from torch.nn.functional import cosine_similarity
 
+
 from lightly.data import LightlyDataset
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
@@ -19,7 +20,7 @@ class SimCLR(pl.LightningModule):
         super().__init__()
         resnet = torchvision.models.resnet18()
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
-        self.projection_head = SimCLRProjectionHead(512, 512, 512) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
+        self.projection_head = SimCLRProjectionHead(512, 1024, 1024) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
         self.criterion = NTXentLoss()
         
     def forward(self, x):
