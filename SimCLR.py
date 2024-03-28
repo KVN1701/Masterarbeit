@@ -59,7 +59,7 @@ class SimCLR(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optim = torch.optim.SGD(self.parameters(), lr=0.001)
+        optim = torch.optim.SGD(self.parameters(), lr=0.06)
         return optim
 
 
@@ -79,14 +79,13 @@ transform = SimCLRTransform(input_size=256)
 
 dataset = LightlyDataset('datasets/ubfc', transform=transform)
 datasets = split_dataset(dataset)
-batch_size = 16
+batch_size = 32
 
 
 dataloader_train = torch.utils.data.DataLoader(
     datasets['train'],
     batch_size=batch_size,
     shuffle=True,
-    # drop_last=True,
     num_workers=8,
     persistent_workers=True # beschleunigt den Trainingsprozess, bei erster epoche langes laden danach keine Wartezeit
 )
@@ -99,6 +98,6 @@ dataloader_validate = torch.utils.data.DataLoader(
 )
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=1000, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader_train, val_dataloaders=dataloader_validate)
-    # trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
+    trainer = pl.Trainer(log_every_n_steps=50, max_epochs=200, devices=1, accelerator='gpu')
+    trainer.fit(model=model, train_dataloaders=dataloader_train)
+    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='best')

@@ -53,7 +53,7 @@ def generate_dataset_timespans(length: int=30, delay: int=5):
 
 
 if __name__ == '__main__':
-    total_data = generate_dataset_timespans(length=15, delay=5)
+    total_data = generate_dataset_timespans(length=30, delay=5)
     
     for i in tqdm(range(len(total_data))):
         arr = total_data[i]
