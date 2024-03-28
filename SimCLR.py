@@ -4,6 +4,8 @@ from torch import nn
 from torch.utils.data import Subset
 import torchvision
 from sklearn.model_selection import train_test_split
+from torch.nn.functional import cosine_similarity
+
 
 from lightly.data import LightlyDataset
 from lightly.loss import NTXentLoss
@@ -20,7 +22,7 @@ class SimCLR(pl.LightningModule):
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
         self.projection_head = SimCLRProjectionHead(512, 1024, 1024) # ? input=Bildgröße, andere: 512, typische Ausgabe-/ hidden-layer-Dimension -> ruft Fehler hervor, warum?
         self.criterion = NTXentLoss()
-
+        
     def forward(self, x):
         x = self.backbone(x).flatten(start_dim=1)
         z = self.projection_head(x)
@@ -31,7 +33,19 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
+        acc = cosine_similarity(z0, z1)
         self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
+        self.log('accuracy', acc.mean(), on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
+        return loss
+    
+    def validation_step(self, batch, batch_index):
+        x0, x1 = batch[0]
+        z0 = self.forward(x0)
+        z1 = self.forward(x1)
+        loss = self.criterion(z0, z1)
+        acc = cosine_similarity(z0, z1)
+        self.log("Train loss", loss, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
+        self.log('accuracy', acc.mean(), on_epoch=True, prog_bar=True, logger=True, batch_size=batch_size)
         return loss
         
     def test_step(self, batch, batch_index):
@@ -39,11 +53,13 @@ class SimCLR(pl.LightningModule):
         z0 = self.forward(x0)
         z1 = self.forward(x1)
         loss = self.criterion(z0, z1)
+        acc = cosine_similarity(z0, z1)
         self.log('test_loss', loss, batch_size=batch_size)
+        self.log('accuracy', acc.mean(), on_epoch=True, batch_size=batch_size)
         return loss
 
     def configure_optimizers(self):
-        optim = torch.optim.SGD(self.parameters(), lr=0.06)
+        optim = torch.optim.SGD(self.parameters(), lr=0.001)
         return optim
 
 
@@ -55,7 +71,7 @@ def split_dataset(dataset, val_split=0.2):
     return datasets
 
 
-torch.set_float32_matmul_precision('medium') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
+torch.set_float32_matmul_precision('high') # alternativ medium, da 4070ti tensor cores hat. Macht training schneller aber weniger genau
 
 model = SimCLR()
 
@@ -70,7 +86,7 @@ dataloader_train = torch.utils.data.DataLoader(
     datasets['train'],
     batch_size=batch_size,
     shuffle=True,
-    drop_last=True,
+    # drop_last=True,
     num_workers=8,
     persistent_workers=True # beschleunigt den Trainingsprozess, bei erster epoche langes laden danach keine Wartezeit
 )
@@ -83,6 +99,6 @@ dataloader_validate = torch.utils.data.DataLoader(
 )
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=50, devices=1, accelerator='gpu')
-    trainer.fit(model=model, train_dataloaders=dataloader_train)
-    trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
+    trainer = pl.Trainer(log_every_n_steps=2, max_epochs=1000, devices=1, accelerator='gpu')
+    trainer.fit(model=model, train_dataloaders=dataloader_train, val_dataloaders=dataloader_validate)
+    # trainer.test(model=model, dataloaders=dataloader_validate, ckpt_path='last')
